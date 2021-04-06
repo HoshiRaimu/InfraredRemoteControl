@@ -30,11 +30,13 @@
 
 #define _XTAL_FREQ 4000000
 
+void sendInfrared(uint8_t *);
+
 void main(void) {
     //PICマイコンの設定
     OSCCON = 0b01101000;
     ANSELA = 0b00000000;    //すべてデジタル
-    TRISA  = 0b00010000;    //RA4を入力に設定
+    TRISA  = 0b00010111;    //RA0とRA1とRA2とRA4を入力に設定
     
     //PWMの設定
     APFCONbits.CCP1SEL = 1;          //CCPをRA5に割り当て
@@ -45,45 +47,49 @@ void main(void) {
     CCPR1L             = 35 / 4;     //デューティー比は1/3  デューティーサイクル = (10ビットの値) x 1クロック分の時間 x プリスケーラ値
     CCP1CONbits.DC1B   = 35 & 0b11;  //下位2ビット
 
-    uint8_t data[4] = {'S', 'C', 0x00, 0x01};
+    uint8_t data0[4] = {'S', 'C', 0x00, 0x00};
+    uint8_t data1[4] = {'S', 'C', 0x00, 0x01};
+    uint8_t data2[4] = {'S', 'C', 0x00, 0x02};
+    uint8_t data3[4] = {'S', 'C', 0x00, 0x03};
     
     while(1) {
-        if(RA4)  {
-            //LEDを点灯
-            LATA0 = 1;
+        if(RA0) sendInfrared(data0);
+        else if(RA1) sendInfrared(data1);
+        else if(RA2) sendInfrared(data2);
+        else if(RA4) sendInfrared(data3);   
+    }
+    return;
+}
+
+void sendInfrared(uint8_t *data) {
+    __delay_ms(50);     //安定化待ち
             
-            __delay_ms(50);     //安定化待ち
-            
-            //リーダーコードの送信
-            TMR2ON = 1;
-            __delay_us(9000);
-            TMR2ON = 0;
-            __delay_us(4500);
-            
-            //カスタムコード、データコードの送信
-            for(int i = 0; i < 4; i++) {
-                for(int j = 7; j >= 0; j--) {
-                    TMR2ON = 1;
-                    __delay_us(560);
-                    TMR2ON = 0;
-                    
-                    //0か1を送信
-                    if(data[i] & (0b00000001 << j)) {
-                        __delay_us(1690);
-                    }else {
-                        __delay_us(560);
-                    }
-                }
-            }
-            
-            //ストップビットの送信
+    //リーダーコードの送信
+    TMR2ON = 1;
+    __delay_us(9000);
+    TMR2ON = 0;
+    __delay_us(4500);
+
+    //カスタムコード、データコードの送信
+    for(int i = 0; i < 4; i++) {
+        for(int j = 7; j >= 0; j--) {
             TMR2ON = 1;
             __delay_us(560);
             TMR2ON = 0;
-            
-            //LEDを消灯
-            LATA0 = 0;
+
+            //0か1を送信
+            if(data[i] & (0b00000001 << j)) {
+                __delay_us(1690);
+            }else {
+                __delay_us(560);
+            }
         }
     }
+
+    //ストップビットの送信
+    TMR2ON = 1;
+    __delay_us(560);
+    TMR2ON = 0;
+    
     return;
 }
