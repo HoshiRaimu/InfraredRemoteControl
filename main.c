@@ -34,8 +34,8 @@ void sendInfrared(uint8_t *, uint16_t *);
 void main(void) {
     //PICマイコンの設定
     OSCCON = 0b01101000;
-    ANSELA = 0b00000100;    //RA2をアナログに設定
-    TRISA  = 0b00000101;    //RA0とRA2を入力に設定
+    ANSELA = 0b00000110;    //RA2をアナログに設定
+    TRISA  = 0b00000111;    //RA0とRA2を入力に設定
     
     //タイマー1の設定
     T1CONbits.TMR1CS = 0b00;    //クロック源に1MHzを使用
@@ -52,7 +52,6 @@ void main(void) {
     CCP1CONbits.DC1B   = 35 & 0b11;  //下位2ビット
     
     ADCON0bits.ADON   = 1;           //ADCを有効
-    ADCON0bits.CHS    = 0b00010;     //チャンネル(AN2)を設定
     ADCON1bits.ADFM   = 1;           //結果を右詰めに格納
     ADCON1bits.ADCS   = 0b0000;      //ADCクロックを選択
     ADCON1bits.ADPREF = 0b00;        //参照電圧をVddに設定
@@ -73,9 +72,15 @@ void main(void) {
 
     while(1) {
         //ADCを使ってボタンの押されている状況を見る
+        ADCON0bits.CHS    = 0b00010;     //チャンネル(AN2)を設定
         ADCON0bits.ADGO = 1;
         while(ADGO);
         int data = (int)ADRES;
+        __delay_ms(10);
+        ADCON0bits.CHS    = 0b00001;     //チャンネル(AN1)を設定
+        ADCON0bits.ADGO = 1;
+        while(ADGO);
+        uint8_t val = ADRES >> 2;
         
         //0xFFごとにcntをインクリメントし、ボタンが押されずに1分ほど経過したらスリープモードに入る
         if(TMR1H >= 0xFF) {
@@ -89,7 +94,7 @@ void main(void) {
                 SLEEP();
                 NOP();
                 
-                TRISA  = 0b00000111;    //元に戻しておく
+                TRISA  = 0b00000101;    //元に戻しておく
                 
                 LATA4 = 1;              //スリープが解除したから点灯しとく
                 cnt = 0;   
@@ -97,11 +102,19 @@ void main(void) {
             
         }
         
-        if     (data >=0 && data <= 20) sendInfrared(data0, &cnt);
-        else if(data >= 500 && data <= 520) sendInfrared(data1, &cnt);
-        else if(data >= 670 && data <= 690) sendInfrared(data2, &cnt);
-        else if(data >= 760 && data <= 780) sendInfrared(data3, &cnt); 
-       
+        if(data >=0 && data <= 50) {
+            data0[2] = val;
+            sendInfrared(data0, &cnt);
+        } else if(data >= 480 && data <= 530) {
+            data1[2] = val;
+            sendInfrared(data1, &cnt);
+        } else if(data >= 650 && data <= 710) {
+            data2[2] = val;
+            sendInfrared(data2, &cnt);
+        } else if(data >= 740 && data <= 800) {
+            data3[2] = val;
+            sendInfrared(data3, &cnt);
+        }
     }
     return;
 }
