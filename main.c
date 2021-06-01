@@ -65,7 +65,7 @@ void main(void) {
     uint8_t data2[4] = {'S', 'C', 0x00, 0x02};
     uint8_t data3[4] = {'S', 'C', 0x00, 0x03};
     
-    TMR1ON = 1;
+    TMR1ON = 1;                 
     uint16_t cnt = 0;                //スリープに入るまでの時間計測用変数
     
     LATA4 = 1;                       //スリープモード判断用LEDを光らせる
@@ -76,11 +76,11 @@ void main(void) {
         ADCON0bits.ADGO = 1;
         while(ADGO);
         int data = (int)ADRES;
-        __delay_ms(10);
+
         ADCON0bits.CHS    = 0b00001;     //チャンネル(AN1)を設定
         ADCON0bits.ADGO = 1;
         while(ADGO);
-        uint8_t val = ADRES >> 2;
+        uint8_t val = ADRES >> 5;       //あたいのレンジを 0-31にする
         
         //0xFFごとにcntをインクリメントし、ボタンが押されずに1分ほど経過したらスリープモードに入る
         if(TMR1H >= 0xFF) {
